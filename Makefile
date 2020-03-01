@@ -1,24 +1,44 @@
-setup:
-	python3 -m venv ~/.dockerproj
+# Python CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-python/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+    # Use the same Docker base as the project
+      - image: python:3.7.3-stretch
 
-install:
-	pip install --upgrade pip &&\
-		pip install -r requirements.txt
+    working_directory: ~/repo
 
-test:
-	#python -m pytest -vv --cov=myrepolib tests/*.py
-	#python -m pytest --nbval notebook.ipynb
+    steps:
+      - checkout
 
-validate-circleci:
-	# See https://circleci.com/docs/2.0/local-cli/#processing-a-config
-	circleci config process .circleci/config.yml
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
 
-run-circleci-local:
-	# See https://circleci.com/docs/2.0/local-cli/#running-a-job
-	circleci local execute
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            make install
+            # Install hadolint
+            wget -O /bin/hadolint https://github.com/hadolint/hadolint/releases/download/v1.17.5/hadolint-Linux-x86_64 &&\
+                chmod +x /bin/hadolint
 
-lint:
-	hadolint Dockerfile 
-	pylint --disable=R,C,W1203 app.py
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-
 
-all: install lint test
+      # run lint!
+      - run:
+          name: run lint
+          command: |
+            . venv/bin/activate
+            make lint  
